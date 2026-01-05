@@ -1,0 +1,28 @@
+pip install boto3
+Python
+import boto3
+
+def deidentify_aws(text):
+    # Initialize the Comprehend Medical client
+    client = boto3.client(service_name='comprehendmedical', region_name='us-east-1')
+    
+    # Call the Detect PHI (Protected Health Information) API
+    result = client.detect_phi(Text=text)
+    
+    # Create a list of the text to be replaced
+    # Sort by BeginOffset in reverse to prevent shifting indices during replacement
+    entities = sorted(result['Entities'], key=lambda x: x['BeginOffset'], reverse=True)
+    
+    deidentified_text = text
+    for entity in entities:
+        start = entity['BeginOffset']
+        end = entity['EndOffset']
+        # Replace the sensitive segment with its category (e.g., [NAME], [DATE])
+        deidentified_text = deidentified_text[:start] + f"[{entity['Type']}]" + deidentified_text[end:]
+        
+    return deidentified_text
+
+# Example clinical note
+note = "Patient John Doe, 45, was seen on 10/12/2023 for a follow-up at Boston General."
+print(deidentify_aws(note))
+# Output: Patient [NAME], [AGE], was seen on [DATE] for a follow-up at [ADDRESS].
